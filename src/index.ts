@@ -33,6 +33,28 @@ const cashFlowURL = 'https://finance.yahoo.com/quote/<TICKER>/cash-flow/';
 const userAgent =
   'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36';
 
+const reportMappings = {
+  balanceSheet: {
+    inventory: 'annualInventory',
+    ppe: 'annualNetPPE',
+    goodwill: 'annualGoodwill',
+    'total assets': 'annualTotalAssets',
+    'current liabilities': 'annualCurrentLiabilities',
+    'long term debt': 'annualTotalNonCurrentLiabilitiesNetMinorityInterest',
+    'total liabilities': 'annualTotalLiabilitiesNetMinorityInterest',
+    'treasury stock': 'annualTreasuryStock',
+    'preferred stock': 'annualPreferredStock',
+    'retained earnings': 'annualRetainedEarnings',
+    'total equity': 'annualTotalEquityGrossMinorityInterest',
+  },
+  incomeStatement: {
+    'r&d': 'annualResearchAndDevelopment',
+  },
+  cashFlow: {
+    'net operating cash flow': 'annualOperatingCashFlow',
+  },
+};
+
 const extractScriptWithDataURL = (html: string) => {
   const $ = cheerio.load(html);
 
@@ -78,21 +100,32 @@ const handleParsedData = (
 ) => {
   console.log(`Handling parsed data for ${reportType} (${ticker})`);
 
-  data?.timeseries?.result?.forEach((result) => {
-    console.log(`\nType: ${result.meta?.type?.[0]}`);
-    console.log(`Symbol: ${result.meta?.symbol?.[0]}`);
+  const mappings = reportMappings[reportType as keyof typeof reportMappings];
 
-    for (const key in result) {
-      if (isFinancialDataArray(result?.[key] as FinancialData[])) {
-        console.log(`\n${key}:`);
-        result?.[key]?.forEach((entry) => {
+  if (!mappings) {
+    console.log(`No mappings found for ${reportType}`);
+    return;
+  }
+
+  Object.keys(mappings).forEach((field) => {
+    const key = mappings[field as keyof typeof mappings];
+    data?.timeseries?.result?.forEach((result) => {
+      const fieldData = result[key];
+      if (isFinancialDataArray(fieldData as FinancialData[])) {
+        console.log(`\n**${field.toUpperCase()}** (${key}):`);
+        fieldData?.forEach((entry) => {
           if (entry) {
-            console.log(`As of Date: ${entry?.asOfDate}`);
-            console.log(`Reported Value: ${entry?.reportedValue?.fmt}`);
+            const asOfDate = entry?.asOfDate;
+            const reportedValue = entry?.reportedValue?.raw;
+            if (asOfDate && reportedValue !== undefined) {
+              console.log(
+                `  As of Date: ${asOfDate} - Reported Value: ${reportedValue}`,
+              );
+            }
           }
         });
       }
-    }
+    });
   });
 };
 
@@ -145,17 +178,17 @@ const main = async () => {
         '<TICKER>',
         ticker,
       );
-      runCurlCommand(incomeStatementURLFinal, ticker, 'Income Statement');
+      runCurlCommand(incomeStatementURLFinal, ticker, 'incomeStatement');
     }
 
     if (config.fetchBalanceSheet) {
       const balanceSheetURLFinal = balanceSheetURL.replace('<TICKER>', ticker);
-      runCurlCommand(balanceSheetURLFinal, ticker, 'Balance Sheet');
+      runCurlCommand(balanceSheetURLFinal, ticker, 'balanceSheet');
     }
 
     if (config.fetchCashFlow) {
       const cashFlowURLFinal = cashFlowURL.replace('<TICKER>', ticker);
-      runCurlCommand(cashFlowURLFinal, ticker, 'Cash Flow');
+      runCurlCommand(cashFlowURLFinal, ticker, 'cashFlow');
     }
   }
 };
