@@ -15,8 +15,27 @@ import {
 /* eslint-disable no-console */
 
 const SELECTED_INDUSTRY =
-  'S&P 500 Health Care' satisfies keyof typeof TICKERS_BY_INDUSTRY;
+  'Beverages - Non-Alcoholic' satisfies keyof typeof TICKERS_BY_INDUSTRY;
 const TICKERS_BY_INDUSTRY = {
+  'Beverages - Non-Alcoholic': [
+    'AKO-A',
+    'AKO-B',
+    'BRFH',
+    'CCEP',
+    'CELH',
+    'COCO',
+    'COKE',
+    'FIZZ',
+    'KDP',
+    'KO',
+    'KOF',
+    'MNST',
+    'PEP',
+    'PRMW',
+    'SHOT',
+    'STKL',
+    'ZVIA',
+  ],
   'S&P 500 Health Care': [
     'LLY',
     'UNH',
