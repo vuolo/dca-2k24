@@ -412,7 +412,7 @@ const runCurlCommand = async (
   currentIndex: number,
   totalTickers: number,
 ): Promise<void> => {
-  const command = `curl -s '${url}' -H 'user-agent: ${userAgent}'`;
+  const command = `curl -s --max-time 10 '${url}' -H 'user-agent: ${userAgent}'`;
   console.log(`Running: ${command}`);
 
   console.log(
@@ -857,4 +857,17 @@ const main = async () => {
 main().catch((error) => {
   console.error('Unhandled error:', error.message);
   // process.exit(1); // Ensure the process exits gracefully on unhandled errors
+});
+
+// on sig int, exit gracefully (export to excel)
+process.on('SIGINT', () => {
+  console.log('Exiting gracefully...');
+
+  const formattedReport = formatFinalReport(finalReport);
+  console.log('Final report:', JSON.stringify(formattedReport, null, 2));
+  console.log('Exporting to Excel...');
+  processExcelTemplate(formattedReport).then(() => {
+    console.log('Excel export complete.');
+    process.exit(0);
+  });
 });
