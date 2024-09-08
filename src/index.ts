@@ -388,7 +388,7 @@ const config = {
 
 const MAX_RETRIES = 10; // Maximum number of retries
 const BATCH_SIZE = 1; // Number of requests per batch
-const RETRY_DELAY_MS = 2000; // Base delay between retries
+const RETRY_DELAY_MS = 10000; // Base delay between retries
 const BATCH_DELAY_MS = 1250; // Delay between batches of requests
 
 const incomeStatementURL =
@@ -532,13 +532,7 @@ const runCurlCommand = async (
         `Attempt ${attempt} failed for ${ticker} (${reportType}). Retrying in ${retryDelay} ms...`,
       );
       await sleep(retryDelay); // Wait before retrying
-      return runCurlCommand(
-        url,
-        ticker,
-        reportType,
-        attempt + 1,
-        retryDelay * 2,
-      ); // Exponential backoff
+      return runCurlCommand(url, ticker, reportType, attempt + 1, retryDelay); // Exponential backoff
     } else {
       console.error(
         `Failed after ${MAX_RETRIES + 1} attempts for ${ticker} (${reportType}). Error:`,
