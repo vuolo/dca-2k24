@@ -391,6 +391,13 @@ const BATCH_SIZE = 1; // Number of requests per batch
 const RETRY_DELAY_MS = 10000; // Base delay between retries
 const BATCH_DELAY_MS = 1250; // Delay between batches of requests
 
+// Timer variables to track elapsed time
+let elapsedTime = 0; // in milliseconds
+let isSleeping = false; // Flag to indicate if we're in the sleep period
+const TIMER_INTERVAL = 1000; // 1 second interval for tracking time
+const FORCE_SLEEP_INTERVAL_MS = 30000; // Force sleep every 30 seconds
+const FORCE_SLEEP_DURATION_MS = 30000; // Sleep duration is 30 seconds
+
 const incomeStatementURL =
   'https://finance.yahoo.com/quote/<TICKER>/financials/';
 const balanceSheetURL =
@@ -420,6 +427,30 @@ const reportMappings = {
   cashFlow: {
     'net operating cash flow': 'annualOperatingCashFlow',
   },
+};
+
+// Timer to track and reset every 30 seconds
+const startTimer = () => {
+  const intervalId = setInterval(async () => {
+    elapsedTime += TIMER_INTERVAL;
+
+    if (elapsedTime >= FORCE_SLEEP_INTERVAL_MS) {
+      isSleeping = true; // Set sleeping flag to true
+      console.log(
+        `Forcing sleep for ${FORCE_SLEEP_DURATION_MS / 1000} seconds...`,
+      );
+      await sleep(FORCE_SLEEP_DURATION_MS); // Sleep for the designated time
+      isSleeping = false; // Reset the sleeping flag after sleep
+      elapsedTime = 0; // Reset the timer after sleep
+    }
+  }, TIMER_INTERVAL);
+
+  return intervalId; // Return the interval ID for potential clearing later
+};
+
+// Stop the timer when necessary
+const stopTimer = (intervalId: NodeJS.Timeout) => {
+  clearInterval(intervalId);
 };
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -488,9 +519,15 @@ const runCurlCommand = async (
   reportType: 'balanceSheet' | 'incomeStatement' | 'cashFlow',
   attempt = 1,
   retryDelay = RETRY_DELAY_MS,
+  currentIndex: number,
+  totalTickers: number,
 ): Promise<void> => {
   const command = `curl -s '${url}' -H 'user-agent: ${userAgent}'`;
   console.log(`Running: ${command}`);
+
+  console.log(
+    `Processing ticker ${currentIndex + 1} of ${totalTickers}: ${ticker}`,
+  );
 
   try {
     const { stdout, stderr } = await execPromise(command, {
@@ -532,25 +569,43 @@ const runCurlCommand = async (
         `Attempt ${attempt} failed for ${ticker} (${reportType}). Retrying in ${retryDelay} ms...`,
       );
       await sleep(retryDelay); // Wait before retrying
-      return runCurlCommand(url, ticker, reportType, attempt + 1, retryDelay); // Exponential backoff
+      return runCurlCommand(
+        url,
+        ticker,
+        reportType,
+        attempt + 1,
+        retryDelay,
+        currentIndex,
+        totalTickers,
+      ); // Exponential backoff
     } else {
       console.error(
         `Failed after ${MAX_RETRIES + 1} attempts for ${ticker} (${reportType}). Error:`,
         err,
       );
-      // Optionally rethrow the error or handle it further here
-      // throw err; // Uncomment if you want to propagate the error
     }
   }
 };
 
-// Function to process tickers in batches with a delay between batches
 const processInBatches = async (tickers: string[]) => {
-  for (let i = 0; i < tickers.length; i += BATCH_SIZE) {
+  const totalTickers = tickers.length;
+
+  // Start the timer
+  const intervalId = startTimer();
+
+  for (let i = 0; i < totalTickers; i += BATCH_SIZE) {
+    // Wait for sleep to finish if we're in the sleeping period
+    while (isSleeping) {
+      console.log('Sleeping, waiting for the sleep period to finish...');
+      await sleep(1000); // Check every second whether sleep period is over
+    }
+
     const batch = tickers.slice(i, i + BATCH_SIZE);
 
     const promises: Promise<void>[] = [];
-    for (const ticker of batch) {
+    for (const [currentIndex, ticker] of batch.entries()) {
+      const globalIndex = i + currentIndex; // Current global index
+
       if (config.fetchIncomeStatement) {
         const incomeStatementURLFinal = incomeStatementURL.replace(
           '<TICKER>',
@@ -561,6 +616,10 @@ const processInBatches = async (tickers: string[]) => {
             incomeStatementURLFinal,
             ticker,
             'incomeStatement',
+            1,
+            RETRY_DELAY_MS,
+            globalIndex,
+            totalTickers,
           ).catch((err) => {
             console.error(
               `Error fetching Income Statement for ${ticker}:`,
@@ -576,18 +635,32 @@ const processInBatches = async (tickers: string[]) => {
           ticker,
         );
         promises.push(
-          runCurlCommand(balanceSheetURLFinal, ticker, 'balanceSheet').catch(
-            (err) => {
-              console.error(`Error fetching Balance Sheet for ${ticker}:`, err);
-            },
-          ),
+          runCurlCommand(
+            balanceSheetURLFinal,
+            ticker,
+            'balanceSheet',
+            1,
+            RETRY_DELAY_MS,
+            globalIndex,
+            totalTickers,
+          ).catch((err) => {
+            console.error(`Error fetching Balance Sheet for ${ticker}:`, err);
+          }),
         );
       }
 
       if (config.fetchCashFlow) {
         const cashFlowURLFinal = cashFlowURL.replace('<TICKER>', ticker);
         promises.push(
-          runCurlCommand(cashFlowURLFinal, ticker, 'cashFlow').catch((err) => {
+          runCurlCommand(
+            cashFlowURLFinal,
+            ticker,
+            'cashFlow',
+            1,
+            RETRY_DELAY_MS,
+            globalIndex,
+            totalTickers,
+          ).catch((err) => {
             console.error(`Error fetching Cash Flow for ${ticker}:`, err);
           }),
         );
@@ -601,6 +674,9 @@ const processInBatches = async (tickers: string[]) => {
     console.log(`Waiting ${BATCH_DELAY_MS} ms before the next batch...`);
     await sleep(BATCH_DELAY_MS);
   }
+
+  // Stop the timer once processing is complete
+  stopTimer(intervalId);
 };
 
 /**
