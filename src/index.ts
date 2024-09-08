@@ -387,6 +387,9 @@ const config = {
   fetchCashFlow: true,
 };
 
+const MAX_RETRIES = 2; // Number of retries
+const RETRY_DELAY_MS = 2000; // 2 seconds delay between retries
+
 const incomeStatementURL =
   'https://finance.yahoo.com/quote/<TICKER>/financials/';
 const balanceSheetURL =
@@ -417,6 +420,8 @@ const reportMappings = {
     'net operating cash flow': 'annualOperatingCashFlow',
   },
 };
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const extractScriptWithDataURL = (html: string) => {
   const $ = cheerio.load(html);
@@ -472,56 +477,69 @@ interface FinalReport {
 const finalReport: Record<string, FinalReport> = {};
 
 // Promisified runCurlCommand
-const runCurlCommand = (
+const runCurlCommand = async (
   url: string,
   ticker: string,
   reportType: 'balanceSheet' | 'incomeStatement' | 'cashFlow',
+  attempt = 1,
 ): Promise<void> => {
-  return new Promise((resolve, reject) => {
+  try {
     const command = `curl -s '${url}' -H 'user-agent: ${userAgent}'`;
     console.log(`Running: ${command}`);
 
-    exec(command, { maxBuffer: 1024 * 1000 * 20 }, (error, stdout, stderr) => {
-      if (error) {
-        console.error(
-          `Error fetching ${reportType} for ${ticker}: ${error.message}`,
-        );
-        reject(error);
-        return;
-      }
-      if (stderr) {
-        console.error(`stderr: ${stderr}`);
-      }
-
-      // Extract content inside the matching <script> tag
-      const extractedContent = extractScriptWithDataURL(stdout);
-
-      if (extractedContent) {
-        console.log(
-          `\n--- Extracted Script Content for ${reportType} (${ticker}) ---\n`,
-        );
-
-        // Try to parse the JSON from the script content
-        const parsedData = parseJSONFromScript(extractedContent);
-
-        if (parsedData) {
-          console.log(
-            `\n--- Parsed JSON Data for ${reportType} (${ticker}) ---\n`,
+    const { exec } = await import('child_process');
+    exec(
+      command,
+      { maxBuffer: 1024 * 1000 * 20 },
+      async (error, stdout, stderr) => {
+        if (error) {
+          throw new Error(
+            `Error fetching ${reportType} for ${ticker}: ${error.message}`,
           );
-          handleParsedData(parsedData, ticker, reportType); // Pass to handler function
-          resolve();
-        } else {
-          console.log(`Failed to parse JSON for ${reportType} (${ticker})`);
-          reject(new Error('Failed to parse JSON'));
         }
-      } else {
-        console.log(
-          `No matching <script> tag found for ${reportType} (${ticker})`,
-        );
-        reject(new Error('No matching <script> tag found'));
-      }
-    });
-  });
+        if (stderr) {
+          console.error(`stderr: ${stderr}`);
+        }
+
+        // Extract content inside the matching <script> tag
+        const extractedContent = extractScriptWithDataURL(stdout);
+
+        if (extractedContent) {
+          console.log(
+            `\n--- Extracted Script Content for ${reportType} (${ticker}) ---\n`,
+          );
+          const parsedData = parseJSONFromScript(extractedContent);
+
+          if (parsedData) {
+            console.log(
+              `\n--- Parsed JSON Data for ${reportType} (${ticker}) ---\n`,
+            );
+            handleParsedData(parsedData, ticker, reportType);
+          } else {
+            console.log(`Failed to parse JSON for ${reportType} (${ticker})`);
+          }
+        } else {
+          console.log(
+            `No matching <script> tag found for ${reportType} (${ticker})`,
+          );
+        }
+      },
+    );
+  } catch (err) {
+    if (attempt <= MAX_RETRIES) {
+      console.warn(
+        `Attempt ${attempt} failed for ${ticker} (${reportType}). Retrying...`,
+      );
+      await sleep(RETRY_DELAY_MS); // Wait for the delay before retrying
+      return runCurlCommand(url, ticker, reportType, attempt + 1); // Retry the command
+    } else {
+      console.error(
+        `Failed after ${MAX_RETRIES + 1} attempts for ${ticker} (${reportType}). Error:`,
+        err,
+      );
+      throw err; // Throw the error after exhausting retries
+    }
+  }
 };
 
 /**
