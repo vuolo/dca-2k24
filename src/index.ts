@@ -764,24 +764,41 @@ const main = async () => {
         ticker,
       );
       promises.push(
-        runCurlCommand(incomeStatementURLFinal, ticker, 'incomeStatement'),
+        runCurlCommand(
+          incomeStatementURLFinal,
+          ticker,
+          'incomeStatement',
+        ).catch((err) => {
+          console.error(`Error fetching Income Statement for ${ticker}:`, err);
+          // Ignore the error, continue processing
+        }),
       );
     }
 
     if (config.fetchBalanceSheet) {
       const balanceSheetURLFinal = balanceSheetURL.replace('<TICKER>', ticker);
       promises.push(
-        runCurlCommand(balanceSheetURLFinal, ticker, 'balanceSheet'),
+        runCurlCommand(balanceSheetURLFinal, ticker, 'balanceSheet').catch(
+          (err) => {
+            console.error(`Error fetching Balance Sheet for ${ticker}:`, err);
+            // Ignore the error, continue processing
+          },
+        ),
       );
     }
 
     if (config.fetchCashFlow) {
       const cashFlowURLFinal = cashFlowURL.replace('<TICKER>', ticker);
-      promises.push(runCurlCommand(cashFlowURLFinal, ticker, 'cashFlow'));
+      promises.push(
+        runCurlCommand(cashFlowURLFinal, ticker, 'cashFlow').catch((err) => {
+          console.error(`Error fetching Cash Flow for ${ticker}:`, err);
+          // Ignore the error, continue processing
+        }),
+      );
     }
   }
 
-  // Wait for all curl commands to resolve
+  // Wait for all curl commands to resolve, ignoring individual errors
   await Promise.all(promises);
 
   // Format the final report (sort dates and limit to 4 most recent)
