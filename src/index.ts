@@ -329,7 +329,7 @@ const applyMappingsToSheet = (
 // Function to auto-resize the column widths based on content with wider columns
 const autoResizeColumns = (worksheet: ExcelJS.Worksheet) => {
   worksheet.columns.forEach((column) => {
-    let maxLength = 12; // Set a slightly wider default minimum width
+    let maxLength = 14; // Set a slightly wider default minimum width
     if (column)
       column.eachCell({ includeEmpty: true }, (cell) => {
         const columnLength = cell.value ? cell.value.toString().length : 0;
