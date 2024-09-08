@@ -14,6 +14,8 @@ import {
 
 /* eslint-disable no-console */
 
+const SELECTED_INDUSTRY =
+  'S&P 500 Health Care' satisfies keyof typeof TICKERS_BY_INDUSTRY;
 const TICKERS_BY_INDUSTRY = {
   'S&P 500 Health Care': [
     'LLY',
@@ -122,8 +124,7 @@ const TICKERS_BY_INDUSTRY = {
   ],
 };
 
-const tickers = TICKERS_BY_INDUSTRY['S&P 500 Health Care'];
-// const tickers = TICKERS_BY_INDUSTRY['S&P 500 Consumer Staples'];
+const tickers = TICKERS_BY_INDUSTRY[SELECTED_INDUSTRY];
 
 const excelMappings = {
   balanceSheet: {
@@ -713,7 +714,9 @@ const processExcelTemplate = async (
   await updateSummaryPage(workbook, tickersWithData);
 
   // Save the updated workbook to the output directory
-  const outputPath = path.resolve(`./output/TICKER_RESULTS.xlsx`);
+  const outputPath = path.resolve(
+    `./output/TICKER_RESULTS_${SELECTED_INDUSTRY}.xlsx`,
+  );
   await workbook.xlsx.writeFile(outputPath);
   console.log(`Excel file saved to ${outputPath}`);
 };
