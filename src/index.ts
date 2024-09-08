@@ -477,7 +477,11 @@ interface FinalReport {
 // Modify finalReport to hold results for each ticker
 const finalReport: Record<string, FinalReport> = {};
 
-// Promisified runCurlCommand with retry logic and exponential backoff
+import { exec } from 'child_process';
+import { promisify } from 'util';
+
+const execPromise = promisify(exec);
+
 const runCurlCommand = async (
   url: string,
   ticker: string,
@@ -485,53 +489,43 @@ const runCurlCommand = async (
   attempt = 1,
   retryDelay = RETRY_DELAY_MS,
 ): Promise<void> => {
+  const command = `curl -s '${url}' -H 'user-agent: ${userAgent}'`;
+  console.log(`Running: ${command}`);
+
   try {
-    const command = `curl -s '${url}' -H 'user-agent: ${userAgent}'`;
-    console.log(`Running: ${command}`);
+    const { stdout, stderr } = await execPromise(command, {
+      maxBuffer: 1024 * 1000 * 20,
+    });
 
-    const { exec } = await import('child_process');
-    exec(
-      command,
-      { maxBuffer: 1024 * 1000 * 20 },
-      async (error, stdout, stderr) => {
-        if (error) {
-          throw new Error(
-            `Error fetching ${reportType} for ${ticker}: ${error.message}`,
-          );
-        }
-        if (stderr) {
-          console.error(`stderr: ${stderr}`);
-          throw new Error(
-            `[stderr] Error fetching ${reportType} for ${ticker}: ${stderr}`,
-          );
-        }
+    if (stderr) {
+      console.error(`stderr: ${stderr}`);
+      throw new Error(
+        `[stderr] Error fetching ${reportType} for ${ticker}: ${stderr}`,
+      );
+    }
 
-        // Extract content inside the matching <script> tag
-        const extractedContent = extractScriptWithDataURL(stdout);
+    // Extract content inside the matching <script> tag
+    const extractedContent = extractScriptWithDataURL(stdout);
 
-        if (extractedContent) {
-          console.log(
-            `\n--- Extracted Script Content for ${reportType} (${ticker}) ---\n`,
-          );
-          const parsedData = parseJSONFromScript(extractedContent);
+    if (extractedContent) {
+      console.log(
+        `\n--- Extracted Script Content for ${reportType} (${ticker}) ---\n`,
+      );
+      const parsedData = parseJSONFromScript(extractedContent);
 
-          if (parsedData) {
-            console.log(
-              `\n--- Parsed JSON Data for ${reportType} (${ticker}) ---\n`,
-            );
-            handleParsedData(parsedData, ticker, reportType);
-          } else {
-            throw new Error(
-              `Failed to parse JSON for ${reportType} (${ticker})`,
-            );
-          }
-        } else {
-          throw new Error(
-            `No matching <script> tag found for ${reportType} (${ticker})`,
-          );
-        }
-      },
-    );
+      if (parsedData) {
+        console.log(
+          `\n--- Parsed JSON Data for ${reportType} (${ticker}) ---\n`,
+        );
+        handleParsedData(parsedData, ticker, reportType);
+      } else {
+        throw new Error(`Failed to parse JSON for ${reportType} (${ticker})`);
+      }
+    } else {
+      throw new Error(
+        `No matching <script> tag found for ${reportType} (${ticker})`,
+      );
+    }
   } catch (err) {
     if (attempt <= MAX_RETRIES) {
       console.warn(
@@ -550,7 +544,8 @@ const runCurlCommand = async (
         `Failed after ${MAX_RETRIES + 1} attempts for ${ticker} (${reportType}). Error:`,
         err,
       );
-      throw err; // Throw the error after exhausting retries
+      // Optionally rethrow the error or handle it further here
+      // throw err; // Uncomment if you want to propagate the error
     }
   }
 };
