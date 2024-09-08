@@ -15,7 +15,348 @@ import {
 
 /* eslint-disable no-console */
 
-const tickers = ['NVDA', 'TSLA', 'AAPL', 'GOOGL', 'AMZN'];
+const tickers = [
+  'AAPL',
+  'MSFT',
+  'AMZN',
+  'NVDA',
+  'GOOGL',
+  'GOOG',
+  'BRK.B',
+  'META',
+  'TSLA',
+  'UNH',
+  'JNJ',
+  'V',
+  'PG',
+  'XOM',
+  'MA',
+  'LLY',
+  'HD',
+  'MRK',
+  'ABBV',
+  'CVX',
+  'PEP',
+  'KO',
+  'PFE',
+  'BAC',
+  'AVGO',
+  'COST',
+  'MCD',
+  'TMO',
+  'CSCO',
+  'DHR',
+  'WMT',
+  'ACN',
+  'ABT',
+  'LIN',
+  'ADBE',
+  'VZ',
+  'DIS',
+  'NFLX',
+  'NEE',
+  'TXN',
+  'PM',
+  'MS',
+  'UNP',
+  'HON',
+  'AMD',
+  'RTX',
+  'AMGN',
+  'CRM',
+  'LOW',
+  'INTC',
+  'SCHW',
+  'BMY',
+  'SPGI',
+  'IBM',
+  'COP',
+  'MDT',
+  'GS',
+  'BLK',
+  'ELV',
+  'CVS',
+  'GE',
+  'CAT',
+  'LMT',
+  'AXP',
+  'PLD',
+  'UPS',
+  'DE',
+  'T',
+  'CB',
+  'ISRG',
+  'MMC',
+  'INTU',
+  'NOW',
+  'MO',
+  'DUK',
+  'MDLZ',
+  'PYPL',
+  'TMUS',
+  'ADP',
+  'SYK',
+  'AMT',
+  'BKNG',
+  'C',
+  'ZTS',
+  'TJX',
+  'APD',
+  'TGT',
+  'BDX',
+  'REGN',
+  'PNC',
+  'CCI',
+  'SO',
+  'CI',
+  'PGR',
+  'GM',
+  'USB',
+  'GILD',
+  'EW',
+  'ADI',
+  'MU',
+  'ITW',
+  'F',
+  'NOC',
+  'ETN',
+  'CL',
+  'NSC',
+  'WM',
+  'NKE',
+  'ECL',
+  'AON',
+  'D',
+  'ROP',
+  'CSX',
+  'SBUX',
+  'TFC',
+  'AEP',
+  'MRNA',
+  'HUM',
+  'SHW',
+  'EMR',
+  'MAR',
+  'CMCSA',
+  'ORLY',
+  'FDX',
+  'CDNS',
+  'BDX',
+  'FISV',
+  'HCA',
+  'LRCX',
+  'KMB',
+  'AIG',
+  'DG',
+  'CTVA',
+  'PH',
+  'MPC',
+  'EXC',
+  'CME',
+  'MCO',
+  'APTV',
+  'ADSK',
+  'SPG',
+  'OXY',
+  'CHTR',
+  'VRTX',
+  'DOW',
+  'KLAC',
+  'TRV',
+  'MCHP',
+  'GIS',
+  'STZ',
+  'SNPS',
+  'PSX',
+  'SYY',
+  'BK',
+  'MCK',
+  'MTD',
+  'VLO',
+  'HLT',
+  'AFL',
+  'ALL',
+  'YUM',
+  'SRE',
+  'IQV',
+  'AZO',
+  'MNST',
+  'KHC',
+  'PAYX',
+  'HES',
+  'IDXX',
+  'PCAR',
+  'A',
+  'CTAS',
+  'STT',
+  'PXD',
+  'EOG',
+  'DLR',
+  'ADM',
+  'WEC',
+  'ODFL',
+  'PPG',
+  'MSCI',
+  'GLW',
+  'LHX',
+  'ED',
+  'WTW',
+  'KR',
+  'RMD',
+  'BKR',
+  'RSG',
+  'NEM',
+  'DHI',
+  'FTNT',
+  'PRU',
+  'ORCL',
+  'CARR',
+  'GWW',
+  'MKC',
+  'ANET',
+  'WMB',
+  'KEYS',
+  'VICI',
+  'WBA',
+  'ROST',
+  'CDW',
+  'ZBH',
+  'O',
+  'TDG',
+  'TT',
+  'NUE',
+  'EFX',
+  'XEL',
+  'WELL',
+  'AMP',
+  'AEE',
+  'CTSH',
+  'HSY',
+  'CMS',
+  'PPL',
+  'DLTR',
+  'BAX',
+  'NDAQ',
+  'DFS',
+  'EBAY',
+  'TSCO',
+  'VRSK',
+  'LVS',
+  'ZBRA',
+  'SBAC',
+  'DGX',
+  'AWK',
+  'DTE',
+  'MPWR',
+  'EXR',
+  'FITB',
+  'SIVB',
+  'HAL',
+  'VFC',
+  'FRC',
+  'EFTR',
+  'KMX',
+  'EXPE',
+  'ANSS',
+  'MLM',
+  'CNP',
+  'PEAK',
+  'WY',
+  'TER',
+  'CINF',
+  'AOS',
+  'FDS',
+  'IRM',
+  'SWK',
+  'PFG',
+  'HRL',
+  'TYL',
+  'GPC',
+  'MKTX',
+  'NTRS',
+  'ETSY',
+  'HST',
+  'ROL',
+  'KSU',
+  'WHR',
+  'CHRW',
+  'LKQ',
+  'FTV',
+  'BRO',
+  'TPR',
+  'ETR',
+  'RJF',
+  'CMS',
+  'PKG',
+  'LNT',
+  'CF',
+  'RCL',
+  'CLX',
+  'SWKS',
+  'BXP',
+  'ESS',
+  'CEG',
+  'XYL',
+  'VTR',
+  'TSN',
+  'QRVO',
+  'CBRE',
+  'MAS',
+  'AES',
+  'HIG',
+  'WAT',
+  'ZION',
+  'NVR',
+  'COO',
+  'ALLE',
+  'SJM',
+  'NDSN',
+  'J',
+  'WRB',
+  'TXT',
+  'UHS',
+  'TROW',
+  'HII',
+  'NLSN',
+  'CTLT',
+  'TTWO',
+  'WU',
+  'DRI',
+  'PHM',
+  'PWR',
+  'LUV',
+  'OKE',
+  'BBY',
+  'PTC',
+  'MRO',
+  'ATO',
+  'INVH',
+  'FE',
+  'PENN',
+  'OMC',
+  'NLOK',
+  'FAST',
+  'CBOE',
+  'JBHT',
+  'AES',
+  'NI',
+  'DOV',
+  'FFIV',
+  'STE',
+  'FIS',
+  'TAP',
+  'WYNN',
+  'IVZ',
+  'XRX',
+  'NWL',
+  'LUMN',
+  'LEG',
+  'CMA',
+  'HPQ',
+  'RL',
+  'PBCT',
+  'MOS',
+];
 
 const excelMappings = {
   balanceSheet: {
@@ -287,13 +628,13 @@ const applyMappingsToSheet = (
   for (const [field, cells] of Object.entries(excelMappings.balanceSheet)) {
     if (reportData.balanceSheet) {
       worksheet.getCell(cells.C).value =
-        reportData.balanceSheet[years[0]]?.[field] || '';
+        reportData.balanceSheet[years[0]]?.[field] || '0';
       worksheet.getCell(cells.D).value =
-        reportData.balanceSheet[years[1]]?.[field] || '';
+        reportData.balanceSheet[years[1]]?.[field] || '0';
       worksheet.getCell(cells.E).value =
-        reportData.balanceSheet[years[2]]?.[field] || '';
+        reportData.balanceSheet[years[2]]?.[field] || '0';
       worksheet.getCell(cells.F).value =
-        reportData.balanceSheet[years[3]]?.[field] || '';
+        reportData.balanceSheet[years[3]]?.[field] || '0';
     }
   }
 
@@ -301,13 +642,13 @@ const applyMappingsToSheet = (
   for (const [field, cells] of Object.entries(excelMappings.incomeStatement)) {
     if (reportData.incomeStatement) {
       worksheet.getCell(cells.C).value =
-        reportData.incomeStatement[years[0]]?.[field] || '';
+        reportData.incomeStatement[years[0]]?.[field] || '0';
       worksheet.getCell(cells.D).value =
-        reportData.incomeStatement[years[1]]?.[field] || '';
+        reportData.incomeStatement[years[1]]?.[field] || '0';
       worksheet.getCell(cells.E).value =
-        reportData.incomeStatement[years[2]]?.[field] || '';
+        reportData.incomeStatement[years[2]]?.[field] || '0';
       worksheet.getCell(cells.F).value =
-        reportData.incomeStatement[years[3]]?.[field] || '';
+        reportData.incomeStatement[years[3]]?.[field] || '0';
     }
   }
 
@@ -315,13 +656,13 @@ const applyMappingsToSheet = (
   for (const [field, cells] of Object.entries(excelMappings.cashFlow)) {
     if (reportData.cashFlow) {
       worksheet.getCell(cells.C).value =
-        reportData.cashFlow[years[0]]?.[field] || '';
+        reportData.cashFlow[years[0]]?.[field] || '0';
       worksheet.getCell(cells.D).value =
-        reportData.cashFlow[years[1]]?.[field] || '';
+        reportData.cashFlow[years[1]]?.[field] || '0';
       worksheet.getCell(cells.E).value =
-        reportData.cashFlow[years[2]]?.[field] || '';
+        reportData.cashFlow[years[2]]?.[field] || '0';
       worksheet.getCell(cells.F).value =
-        reportData.cashFlow[years[3]]?.[field] || '';
+        reportData.cashFlow[years[3]]?.[field] || '0';
     }
   }
 };
@@ -331,6 +672,7 @@ const autoResizeColumns = (worksheet: ExcelJS.Worksheet) => {
   worksheet.columns.forEach((column) => {
     let maxLength = 14; // Set a slightly wider default minimum width
     if (column)
+      /** @ts-expect-error: column is not undefined */
       column.eachCell({ includeEmpty: true }, (cell) => {
         const columnLength = cell.value ? cell.value.toString().length : 0;
         if (columnLength > maxLength) {
@@ -378,9 +720,10 @@ const processExcelTemplate = async (
       return;
     }
 
-    // Duplicate and rename the sheet
+    // Duplicate and rename the sheet, and set default zoom to 200%
     const newSheet = workbook.addWorksheet(`${ticker} Results`, {
       properties: { tabColor: { argb: 'FF00FF00' } }, // Adjust if needed
+      views: [{ state: 'normal', zoomScale: 200 }], // Set default zoom to 200%
     });
 
     templateSheet.eachRow((row, rowIndex) => {
