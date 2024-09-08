@@ -769,6 +769,41 @@ const autoResizeColumns = (worksheet: ExcelJS.Worksheet) => {
   });
 };
 
+// Function to update the existing "Summary" sheet and reference score percent from each stock sheet
+const updateSummaryPage = async (
+  workbook: ExcelJS.Workbook,
+  tickers: string[],
+) => {
+  // Get the existing Summary sheet
+  const summarySheet = workbook.getWorksheet('Summary');
+
+  if (!summarySheet) {
+    console.error('Summary sheet not found.');
+    return;
+  }
+
+  // Iterate over each ticker and populate row 1 (tickers) and row 2 (score percentages)
+  tickers.forEach((ticker, index) => {
+    const columnLetter = String.fromCharCode(66 + index); // Starting from column 'B' (ASCII 66)
+    const stockSheet = workbook.getWorksheet(`${ticker} Results`);
+
+    if (stockSheet) {
+      // Set the ticker name in row 1 (B1, C1, D1, etc.)
+      summarySheet.getCell(`${columnLetter}1`).value = ticker;
+
+      // Create a reference to cell I2 of the stock sheet for the score percent in row 2
+      summarySheet.getCell(`${columnLetter}2`).value = {
+        formula: `'${ticker} Results'!I2`, // Reference the I2 cell from the stock sheet
+      };
+    }
+  });
+
+  // Auto-resize the columns for better visibility
+  summarySheet.columns.forEach((col) => {
+    col.width = 15; // Adjust as needed
+  });
+};
+
 // Main function to read, duplicate, and apply data to Excel
 const processExcelTemplate = async (
   formattedReport: Record<string, FinalReport>,
@@ -783,6 +818,8 @@ const processExcelTemplate = async (
 
   // Read the template
   await workbook.xlsx.readFile(templatePath);
+
+  const tickersWithData = [];
 
   // Iterate over each ticker in the report
   for (const ticker in formattedReport) {
@@ -831,7 +868,13 @@ const processExcelTemplate = async (
 
     // Auto-resize the columns based on content
     autoResizeColumns(newSheet);
+
+    // Add ticker to the list of tickers with data
+    tickersWithData.push(ticker);
   }
+
+  // Update the existing summary page with the new tickers and score references
+  await updateSummaryPage(workbook, tickersWithData);
 
   // Save the updated workbook to the output directory
   const outputPath = path.resolve(`./output/TICKER_RESULTS.xlsx`);
