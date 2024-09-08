@@ -714,13 +714,13 @@ const applyMappingsToSheet = (
   for (const [field, cells] of Object.entries(excelMappings.balanceSheet)) {
     if (reportData.balanceSheet) {
       worksheet.getCell(cells.C).value =
-        reportData.balanceSheet[years[0]]?.[field] || '0';
+        reportData.balanceSheet[years[0]]?.[field] || 0;
       worksheet.getCell(cells.D).value =
-        reportData.balanceSheet[years[1]]?.[field] || '0';
+        reportData.balanceSheet[years[1]]?.[field] || 0;
       worksheet.getCell(cells.E).value =
-        reportData.balanceSheet[years[2]]?.[field] || '0';
+        reportData.balanceSheet[years[2]]?.[field] || 0;
       worksheet.getCell(cells.F).value =
-        reportData.balanceSheet[years[3]]?.[field] || '0';
+        reportData.balanceSheet[years[3]]?.[field] || 0;
     }
   }
 
@@ -728,13 +728,13 @@ const applyMappingsToSheet = (
   for (const [field, cells] of Object.entries(excelMappings.incomeStatement)) {
     if (reportData.incomeStatement) {
       worksheet.getCell(cells.C).value =
-        reportData.incomeStatement[years[0]]?.[field] || '0';
+        reportData.incomeStatement[years[0]]?.[field] || 0;
       worksheet.getCell(cells.D).value =
-        reportData.incomeStatement[years[1]]?.[field] || '0';
+        reportData.incomeStatement[years[1]]?.[field] || 0;
       worksheet.getCell(cells.E).value =
-        reportData.incomeStatement[years[2]]?.[field] || '0';
+        reportData.incomeStatement[years[2]]?.[field] || 0;
       worksheet.getCell(cells.F).value =
-        reportData.incomeStatement[years[3]]?.[field] || '0';
+        reportData.incomeStatement[years[3]]?.[field] || 0;
     }
   }
 
@@ -742,13 +742,13 @@ const applyMappingsToSheet = (
   for (const [field, cells] of Object.entries(excelMappings.cashFlow)) {
     if (reportData.cashFlow) {
       worksheet.getCell(cells.C).value =
-        reportData.cashFlow[years[0]]?.[field] || '0';
+        reportData.cashFlow[years[0]]?.[field] || 0;
       worksheet.getCell(cells.D).value =
-        reportData.cashFlow[years[1]]?.[field] || '0';
+        reportData.cashFlow[years[1]]?.[field] || 0;
       worksheet.getCell(cells.E).value =
-        reportData.cashFlow[years[2]]?.[field] || '0';
+        reportData.cashFlow[years[2]]?.[field] || 0;
       worksheet.getCell(cells.F).value =
-        reportData.cashFlow[years[3]]?.[field] || '0';
+        reportData.cashFlow[years[3]]?.[field] || 0;
     }
   }
 };
