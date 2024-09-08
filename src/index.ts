@@ -1,6 +1,5 @@
 /** DCA Calculator (2k24 edition) */
 
-import { exec } from 'child_process';
 import * as cheerio from 'cheerio';
 import ExcelJS from 'exceljs';
 import * as fs from 'fs';
@@ -782,26 +781,25 @@ const updateSummaryPage = async (
     return;
   }
 
-  // Iterate over each ticker and populate row 1 (tickers) and row 2 (score percentages)
+  // Iterate over each ticker and populate column A (tickers) and column B (score percentages)
   tickers.forEach((ticker, index) => {
-    const columnLetter = String.fromCharCode(66 + index); // Starting from column 'B' (ASCII 66)
+    const rowNumber = 2 + index; // Starting from row 2
     const stockSheet = workbook.getWorksheet(`${ticker} Results`);
 
     if (stockSheet) {
-      // Set the ticker name in row 1 (B1, C1, D1, etc.)
-      summarySheet.getCell(`${columnLetter}1`).value = ticker;
+      // Set the ticker name in column A (A2, A3, A4, etc.)
+      summarySheet.getCell(`A${rowNumber}`).value = ticker;
 
-      // Create a reference to cell I2 of the stock sheet for the score percent in row 2
-      summarySheet.getCell(`${columnLetter}2`).value = {
+      // Create a reference to cell I2 of the stock sheet for the score percent in column B
+      summarySheet.getCell(`B${rowNumber}`).value = {
         formula: `'${ticker} Results'!I2`, // Reference the I2 cell from the stock sheet
       };
     }
   });
 
   // Auto-resize the columns for better visibility
-  summarySheet.columns.forEach((col) => {
-    col.width = 15; // Adjust as needed
-  });
+  summarySheet.getColumn(1).width = 15; // Ticker column width
+  summarySheet.getColumn(2).width = 20; // Score percent column width
 };
 
 // Main function to read, duplicate, and apply data to Excel
