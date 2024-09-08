@@ -15,8 +15,32 @@ import {
 /* eslint-disable no-console */
 
 const SELECTED_INDUSTRY =
-  'Largest Companies In The Utilities Sector' satisfies keyof typeof TICKERS_BY_INDUSTRY;
+  'Fundamentally Strong Stocks For Long Term' satisfies keyof typeof TICKERS_BY_INDUSTRY;
 const TICKERS_BY_INDUSTRY = {
+  'Fundamentally Strong Stocks For Long Term': [
+    'DIVISLAB',
+    'CGPOWER.NS',
+    'HDFCAMC.NS',
+    'GICRE.NS',
+    'BDL',
+    'GSK',
+    'NAM-INDIA.NS',
+    'LLOYDSME.BO',
+    '%5EBSESN',
+    'SKFINDIA.NS',
+  ],
+  'Best Long-Term Stocks of September 2024': [
+    'T',
+    'CVS',
+    'F',
+    'ALL',
+    'KHC',
+    'KR',
+    'DFS',
+    'HIG',
+    'FE',
+  ],
+  gopro: ['GPRO'],
   'Largest Companies In The Utilities Sector': [
     'NEE',
     'SO',
