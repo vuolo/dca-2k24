@@ -715,7 +715,7 @@ const processExcelTemplate = async (
 
   // Save the updated workbook to the output directory
   const outputPath = path.resolve(
-    `./output/TICKER_RESULTS_${SELECTED_INDUSTRY}.xlsx`,
+    `./output/${SELECTED_INDUSTRY} TICKER_RESULTS.xlsx`,
   );
   await workbook.xlsx.writeFile(outputPath);
   console.log(`Excel file saved to ${outputPath}`);
