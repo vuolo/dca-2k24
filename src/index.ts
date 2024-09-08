@@ -17,12 +17,7 @@ const config = {
   fetchCashFlow: true,
 };
 
-const tickers = [
-  // 'COST',
-  'NVDA',
-  // 'AAPL',
-  // 'TSLA'
-];
+const tickers = ['NVDA'];
 
 const incomeStatementURL =
   'https://finance.yahoo.com/quote/<TICKER>/financials/';
@@ -92,11 +87,84 @@ const parseJSONFromScript = (scriptContent: string): ResponseBody | null => {
   }
 };
 
+// Define the structure of the final report
+interface Report {
+  [date: string]: {
+    [field: string]: number;
+  };
+}
+
+interface FinalReport {
+  balanceSheet: Report;
+  incomeStatement: Report;
+  cashFlow: Report;
+}
+
+// Object to hold the final structured result
+const finalReport: FinalReport = {
+  balanceSheet: {},
+  incomeStatement: {},
+  cashFlow: {},
+};
+
+// Promisified runCurlCommand
+const runCurlCommand = (
+  url: string,
+  ticker: string,
+  reportType: 'balanceSheet' | 'incomeStatement' | 'cashFlow',
+): Promise<void> => {
+  return new Promise((resolve, reject) => {
+    const command = `curl -s '${url}' -H 'user-agent: ${userAgent}'`;
+    console.log(`Running: ${command}`);
+
+    exec(command, { maxBuffer: 1024 * 1000 * 20 }, (error, stdout, stderr) => {
+      if (error) {
+        console.error(
+          `Error fetching ${reportType} for ${ticker}: ${error.message}`,
+        );
+        reject(error);
+        return;
+      }
+      if (stderr) {
+        console.error(`stderr: ${stderr}`);
+      }
+
+      // Extract content inside the matching <script> tag
+      const extractedContent = extractScriptWithDataURL(stdout);
+
+      if (extractedContent) {
+        console.log(
+          `\n--- Extracted Script Content for ${reportType} (${ticker}) ---\n`,
+        );
+
+        // Try to parse the JSON from the script content
+        const parsedData = parseJSONFromScript(extractedContent);
+
+        if (parsedData) {
+          console.log(
+            `\n--- Parsed JSON Data for ${reportType} (${ticker}) ---\n`,
+          );
+          handleParsedData(parsedData, ticker, reportType); // Pass to handler function
+          resolve();
+        } else {
+          console.log(`Failed to parse JSON for ${reportType} (${ticker})`);
+          reject(new Error('Failed to parse JSON'));
+        }
+      } else {
+        console.log(
+          `No matching <script> tag found for ${reportType} (${ticker})`,
+        );
+        reject(new Error('No matching <script> tag found'));
+      }
+    });
+  });
+};
+
 // Handler function for parsed data
 const handleParsedData = (
   data: ResponseBody,
   ticker: string,
-  reportType: string,
+  reportType: 'balanceSheet' | 'incomeStatement' | 'cashFlow',
 ) => {
   console.log(`Handling parsed data for ${reportType} (${ticker})`);
 
@@ -112,15 +180,20 @@ const handleParsedData = (
     data?.timeseries?.result?.forEach((result) => {
       const fieldData = result[key];
       if (isFinancialDataArray(fieldData as FinancialData[])) {
-        console.log(`\n**${field.toUpperCase()}** (${key}):`);
         fieldData?.forEach((entry) => {
           if (entry) {
             const asOfDate = entry?.asOfDate;
             const reportedValue = entry?.reportedValue?.raw;
+
             if (asOfDate && reportedValue !== undefined) {
-              console.log(
-                `  As of Date: ${asOfDate} - Reported Value: ${reportedValue}`,
-              );
+              // Store the data in the finalReport object
+              if (!finalReport[reportType]) {
+                finalReport[reportType] = {};
+              }
+              if (!finalReport[reportType][asOfDate]) {
+                finalReport[reportType][asOfDate] = {};
+              }
+              finalReport[reportType][asOfDate][field] = reportedValue;
             }
           }
         });
@@ -129,68 +202,75 @@ const handleParsedData = (
   });
 };
 
-const runCurlCommand = (url: string, ticker: string, reportType: string) => {
-  const command = `curl -s '${url}' -H 'user-agent: ${userAgent}'`;
-  console.log(`Running: ${command}`);
+/**
+ * Function to format the final report by reordering the date keys
+ * in reverse chronological order and limiting to the most recent 4 years.
+ */
+const formatFinalReport = (finalReport: FinalReport): FinalReport => {
+  // Helper function to sort keys by date and limit to 4
+  const reorderAndLimitDates = (data: Report): Report => {
+    const sortedKeys = Object.keys(data)
+      .sort((a, b) => new Date(b).getTime() - new Date(a).getTime()) // Sort by date, most recent first
+      .slice(0, 4); // Only take the most recent 4 keys
 
-  exec(command, { maxBuffer: 1024 * 1000 * 20 }, (error, stdout, stderr) => {
-    if (error) {
-      console.error(
-        `Error fetching ${reportType} for ${ticker}: ${error.message}`,
-      );
-      return;
+    const newData: Report = {};
+    for (const key of sortedKeys) {
+      newData[key] = data[key];
     }
-    if (stderr) {
-      console.error(`stderr: ${stderr}`);
-    }
+    return newData;
+  };
 
-    // Extract content inside the matching <script> tag
-    const extractedContent = extractScriptWithDataURL(stdout);
+  // Create a new final report with reordered and limited dates
+  const formattedReport: FinalReport = {
+    balanceSheet: reorderAndLimitDates(finalReport.balanceSheet),
+    incomeStatement: reorderAndLimitDates(finalReport.incomeStatement),
+    cashFlow: reorderAndLimitDates(finalReport.cashFlow),
+  };
 
-    if (extractedContent) {
-      console.log(
-        `\n--- Extracted Script Content for ${reportType} (${ticker}) ---\n`,
-      );
-
-      // Try to parse the JSON from the script content
-      const parsedData = parseJSONFromScript(extractedContent);
-
-      if (parsedData) {
-        console.log(
-          `\n--- Parsed JSON Data for ${reportType} (${ticker}) ---\n`,
-        );
-        handleParsedData(parsedData, ticker, reportType); // Pass to handler function
-      } else {
-        console.log(`Failed to parse JSON for ${reportType} (${ticker})`);
-      }
-    } else {
-      console.log(
-        `No matching <script> tag found for ${reportType} (${ticker})`,
-      );
-    }
-  });
+  return formattedReport;
 };
 
+// At the end of the main function, call the formatter and log the result
 const main = async () => {
+  const promises: Promise<void>[] = [];
+
   for (const ticker of tickers) {
     if (config.fetchIncomeStatement) {
       const incomeStatementURLFinal = incomeStatementURL.replace(
         '<TICKER>',
         ticker,
       );
-      runCurlCommand(incomeStatementURLFinal, ticker, 'incomeStatement');
+      promises.push(
+        runCurlCommand(incomeStatementURLFinal, ticker, 'incomeStatement'),
+      );
     }
 
     if (config.fetchBalanceSheet) {
       const balanceSheetURLFinal = balanceSheetURL.replace('<TICKER>', ticker);
-      runCurlCommand(balanceSheetURLFinal, ticker, 'balanceSheet');
+      promises.push(
+        runCurlCommand(balanceSheetURLFinal, ticker, 'balanceSheet'),
+      );
     }
 
     if (config.fetchCashFlow) {
       const cashFlowURLFinal = cashFlowURL.replace('<TICKER>', ticker);
-      runCurlCommand(cashFlowURLFinal, ticker, 'cashFlow');
+      promises.push(runCurlCommand(cashFlowURLFinal, ticker, 'cashFlow'));
     }
   }
+
+  // Wait for all curl commands to resolve
+  await Promise.all(promises);
+
+  // Log the final structured report before formatting
+  console.log('\n--- Final Structured Report ---\n');
+  console.log(JSON.stringify(finalReport, null, 2));
+
+  // Format the final report (sort dates and limit to 4 most recent)
+  const formattedReport = formatFinalReport(finalReport);
+
+  // Log the formatted report
+  console.log('\n--- Formatted Final Report (Most Recent 4 Years) ---\n');
+  console.log(JSON.stringify(formattedReport, null, 2));
 };
 
 main();
