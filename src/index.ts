@@ -387,8 +387,10 @@ const config = {
   fetchCashFlow: true,
 };
 
-const MAX_RETRIES = 2; // Number of retries
-const RETRY_DELAY_MS = 2000; // 2 seconds delay between retries
+const MAX_RETRIES = 3; // Maximum number of retries
+const BATCH_SIZE = 10; // Number of requests per batch
+const RETRY_DELAY_MS = 2000; // Base delay between retries
+const BATCH_DELAY_MS = 5000; // Delay between batches of requests
 
 const incomeStatementURL =
   'https://finance.yahoo.com/quote/<TICKER>/financials/';
@@ -476,12 +478,13 @@ interface FinalReport {
 // Modify finalReport to hold results for each ticker
 const finalReport: Record<string, FinalReport> = {};
 
-// Promisified runCurlCommand
+// Promisified runCurlCommand with retry logic and exponential backoff
 const runCurlCommand = async (
   url: string,
   ticker: string,
   reportType: 'balanceSheet' | 'incomeStatement' | 'cashFlow',
   attempt = 1,
+  retryDelay = RETRY_DELAY_MS,
 ): Promise<void> => {
   try {
     const command = `curl -s '${url}' -H 'user-agent: ${userAgent}'`;
@@ -528,10 +531,16 @@ const runCurlCommand = async (
   } catch (err) {
     if (attempt <= MAX_RETRIES) {
       console.warn(
-        `Attempt ${attempt} failed for ${ticker} (${reportType}). Retrying...`,
+        `Attempt ${attempt} failed for ${ticker} (${reportType}). Retrying in ${retryDelay} ms...`,
       );
-      await sleep(RETRY_DELAY_MS); // Wait for the delay before retrying
-      return runCurlCommand(url, ticker, reportType, attempt + 1); // Retry the command
+      await sleep(retryDelay); // Wait before retrying
+      return runCurlCommand(
+        url,
+        ticker,
+        reportType,
+        attempt + 1,
+        retryDelay * 2,
+      ); // Exponential backoff
     } else {
       console.error(
         `Failed after ${MAX_RETRIES + 1} attempts for ${ticker} (${reportType}). Error:`,
@@ -539,6 +548,65 @@ const runCurlCommand = async (
       );
       throw err; // Throw the error after exhausting retries
     }
+  }
+};
+
+// Function to process tickers in batches with a delay between batches
+const processInBatches = async (tickers: string[]) => {
+  for (let i = 0; i < tickers.length; i += BATCH_SIZE) {
+    const batch = tickers.slice(i, i + BATCH_SIZE);
+
+    const promises: Promise<void>[] = [];
+    for (const ticker of batch) {
+      if (config.fetchIncomeStatement) {
+        const incomeStatementURLFinal = incomeStatementURL.replace(
+          '<TICKER>',
+          ticker,
+        );
+        promises.push(
+          runCurlCommand(
+            incomeStatementURLFinal,
+            ticker,
+            'incomeStatement',
+          ).catch((err) => {
+            console.error(
+              `Error fetching Income Statement for ${ticker}:`,
+              err,
+            );
+          }),
+        );
+      }
+
+      if (config.fetchBalanceSheet) {
+        const balanceSheetURLFinal = balanceSheetURL.replace(
+          '<TICKER>',
+          ticker,
+        );
+        promises.push(
+          runCurlCommand(balanceSheetURLFinal, ticker, 'balanceSheet').catch(
+            (err) => {
+              console.error(`Error fetching Balance Sheet for ${ticker}:`, err);
+            },
+          ),
+        );
+      }
+
+      if (config.fetchCashFlow) {
+        const cashFlowURLFinal = cashFlowURL.replace('<TICKER>', ticker);
+        promises.push(
+          runCurlCommand(cashFlowURLFinal, ticker, 'cashFlow').catch((err) => {
+            console.error(`Error fetching Cash Flow for ${ticker}:`, err);
+          }),
+        );
+      }
+    }
+
+    // Wait for all requests in the batch to finish
+    await Promise.all(promises);
+
+    // Wait before processing the next batch
+    console.log(`Waiting ${BATCH_DELAY_MS} ms before the next batch...`);
+    await sleep(BATCH_DELAY_MS);
   }
 };
 
@@ -771,53 +839,9 @@ const processExcelTemplate = async (
   console.log(`Excel file saved to ${outputPath}`);
 };
 
-// After generating the final report, call the processing function
+// Main function
 const main = async () => {
-  const promises: Promise<void>[] = [];
-
-  for (const ticker of tickers) {
-    if (config.fetchIncomeStatement) {
-      const incomeStatementURLFinal = incomeStatementURL.replace(
-        '<TICKER>',
-        ticker,
-      );
-      promises.push(
-        runCurlCommand(
-          incomeStatementURLFinal,
-          ticker,
-          'incomeStatement',
-        ).catch((err) => {
-          console.error(`Error fetching Income Statement for ${ticker}:`, err);
-          // Ignore the error, continue processing
-        }),
-      );
-    }
-
-    if (config.fetchBalanceSheet) {
-      const balanceSheetURLFinal = balanceSheetURL.replace('<TICKER>', ticker);
-      promises.push(
-        runCurlCommand(balanceSheetURLFinal, ticker, 'balanceSheet').catch(
-          (err) => {
-            console.error(`Error fetching Balance Sheet for ${ticker}:`, err);
-            // Ignore the error, continue processing
-          },
-        ),
-      );
-    }
-
-    if (config.fetchCashFlow) {
-      const cashFlowURLFinal = cashFlowURL.replace('<TICKER>', ticker);
-      promises.push(
-        runCurlCommand(cashFlowURLFinal, ticker, 'cashFlow').catch((err) => {
-          console.error(`Error fetching Cash Flow for ${ticker}:`, err);
-          // Ignore the error, continue processing
-        }),
-      );
-    }
-  }
-
-  // Wait for all curl commands to resolve, ignoring individual errors
-  await Promise.all(promises);
+  await processInBatches(tickers); // Process tickers in batches
 
   // Format the final report (sort dates and limit to 4 most recent)
   const formattedReport = formatFinalReport(finalReport);
