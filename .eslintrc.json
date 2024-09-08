@@ -1,0 +1,25 @@
+{
+  "env": {
+    "browser": true,
+    "es2021": true,
+    "node": true
+  },
+  "extends": [
+    "eslint:recommended",
+    "plugin:@typescript-eslint/recommended",
+    "plugin:prettier/recommended"
+  ],
+  "parser": "@typescript-eslint/parser",
+  "parserOptions": {
+    "ecmaVersion": 12,
+    "sourceType": "module"
+  },
+  "plugins": ["@typescript-eslint", "prettier"],
+  "rules": {
+    "prettier/prettier": "error",
+    "@typescript-eslint/no-unused-vars": "warn",    // Set unused variables to warn
+    "no-console": "warn",                           // Set console statements to warn
+    "no-unused-vars": "warn",                       // General JS unused variables to warn
+    "@typescript-eslint/no-explicit-any": "warn"    // Treat explicit `any` type as a warning
+  }
+}
