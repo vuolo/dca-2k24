@@ -645,8 +645,11 @@ const updateSummaryPage = async (
     const stockSheet = workbook.getWorksheet(`${ticker} Results`);
 
     if (stockSheet) {
-      // Set the ticker name in column A (A2, A3, A4, etc.)
-      summarySheet.getCell(`A${rowNumber}`).value = ticker;
+      // Set the ticker name in column A (A2, A3, A4, etc.) with a hyperlink to the respective worksheet (A1 cell)
+      summarySheet.getCell(`A${rowNumber}`).value = {
+        text: ticker, // Display text for the hyperlink
+        hyperlink: `#'${ticker} Results'!A1`, // Hyperlink to the respective worksheet's A1 cell
+      };
 
       // Create a reference to cell I2 of the stock sheet for the score percent in column B
       summarySheet.getCell(`B${rowNumber}`).value = {
