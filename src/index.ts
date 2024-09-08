@@ -271,6 +271,7 @@ const handleParsedData = (
   });
 };
 
+// Function to apply mappings to the Excel sheet
 const applyMappingsToSheet = (
   worksheet: ExcelJS.Worksheet,
   reportData: FinalReport,
@@ -323,6 +324,21 @@ const applyMappingsToSheet = (
         reportData.cashFlow[years[3]]?.[field] || '';
     }
   }
+};
+
+// Function to auto-resize the column widths based on content with wider columns
+const autoResizeColumns = (worksheet: ExcelJS.Worksheet) => {
+  worksheet.columns.forEach((column) => {
+    let maxLength = 12; // Set a slightly wider default minimum width
+    if (column)
+      column.eachCell({ includeEmpty: true }, (cell) => {
+        const columnLength = cell.value ? cell.value.toString().length : 0;
+        if (columnLength > maxLength) {
+          maxLength = columnLength;
+        }
+      });
+    column.width = maxLength + 5; // Increase padding to make columns wider
+  });
 };
 
 // Main function to read, duplicate, and apply data to Excel
@@ -383,6 +399,9 @@ const processExcelTemplate = async (
 
     // Apply data to the new sheet
     applyMappingsToSheet(newSheet, reportData, years);
+
+    // Auto-resize the columns based on content
+    autoResizeColumns(newSheet);
   }
 
   // Save the updated workbook to the output directory
