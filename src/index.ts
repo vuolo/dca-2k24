@@ -2,7 +2,7 @@
 
 import { exec } from 'child_process';
 import * as cheerio from 'cheerio';
-import * as xlsx from 'xlsx';
+import ExcelJS from 'exceljs';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -270,60 +270,57 @@ const handleParsedData = (
     });
   });
 };
+
 const applyMappingsToSheet = (
-  worksheet: any,
+  worksheet: ExcelJS.Worksheet,
   reportData: FinalReport,
   years: string[],
 ) => {
   // Apply years in header
-  worksheet[excelMappings.years.C] = { v: years[0] };
-  worksheet[excelMappings.years.D] = { v: years[1] };
-  worksheet[excelMappings.years.E] = { v: years[2] };
-  worksheet[excelMappings.years.F] = { v: years[3] };
+  worksheet.getCell(excelMappings.years.C).value = years[0];
+  worksheet.getCell(excelMappings.years.D).value = years[1];
+  worksheet.getCell(excelMappings.years.E).value = years[2];
+  worksheet.getCell(excelMappings.years.F).value = years[3];
 
   // Balance sheet
   for (const [field, cells] of Object.entries(excelMappings.balanceSheet)) {
     if (reportData.balanceSheet) {
-      worksheet[cells.C] = {
-        v: reportData.balanceSheet[years[0]]?.[field] || '',
-      };
-      worksheet[cells.D] = {
-        v: reportData.balanceSheet[years[1]]?.[field] || '',
-      };
-      worksheet[cells.E] = {
-        v: reportData.balanceSheet[years[2]]?.[field] || '',
-      };
-      worksheet[cells.F] = {
-        v: reportData.balanceSheet[years[3]]?.[field] || '',
-      };
+      worksheet.getCell(cells.C).value =
+        reportData.balanceSheet[years[0]]?.[field] || '';
+      worksheet.getCell(cells.D).value =
+        reportData.balanceSheet[years[1]]?.[field] || '';
+      worksheet.getCell(cells.E).value =
+        reportData.balanceSheet[years[2]]?.[field] || '';
+      worksheet.getCell(cells.F).value =
+        reportData.balanceSheet[years[3]]?.[field] || '';
     }
   }
 
   // Income statement
   for (const [field, cells] of Object.entries(excelMappings.incomeStatement)) {
     if (reportData.incomeStatement) {
-      worksheet[cells.C] = {
-        v: reportData.incomeStatement[years[0]]?.[field] || '',
-      };
-      worksheet[cells.D] = {
-        v: reportData.incomeStatement[years[1]]?.[field] || '',
-      };
-      worksheet[cells.E] = {
-        v: reportData.incomeStatement[years[2]]?.[field] || '',
-      };
-      worksheet[cells.F] = {
-        v: reportData.incomeStatement[years[3]]?.[field] || '',
-      };
+      worksheet.getCell(cells.C).value =
+        reportData.incomeStatement[years[0]]?.[field] || '';
+      worksheet.getCell(cells.D).value =
+        reportData.incomeStatement[years[1]]?.[field] || '';
+      worksheet.getCell(cells.E).value =
+        reportData.incomeStatement[years[2]]?.[field] || '';
+      worksheet.getCell(cells.F).value =
+        reportData.incomeStatement[years[3]]?.[field] || '';
     }
   }
 
   // Cash flow
   for (const [field, cells] of Object.entries(excelMappings.cashFlow)) {
     if (reportData.cashFlow) {
-      worksheet[cells.C] = { v: reportData.cashFlow[years[0]]?.[field] || '' };
-      worksheet[cells.D] = { v: reportData.cashFlow[years[1]]?.[field] || '' };
-      worksheet[cells.E] = { v: reportData.cashFlow[years[2]]?.[field] || '' };
-      worksheet[cells.F] = { v: reportData.cashFlow[years[3]]?.[field] || '' };
+      worksheet.getCell(cells.C).value =
+        reportData.cashFlow[years[0]]?.[field] || '';
+      worksheet.getCell(cells.D).value =
+        reportData.cashFlow[years[1]]?.[field] || '';
+      worksheet.getCell(cells.E).value =
+        reportData.cashFlow[years[2]]?.[field] || '';
+      worksheet.getCell(cells.F).value =
+        reportData.cashFlow[years[3]]?.[field] || '';
     }
   }
 };
@@ -332,6 +329,7 @@ const applyMappingsToSheet = (
 const processExcelTemplate = async (
   formattedReport: Record<string, FinalReport>,
 ) => {
+  const workbook = new ExcelJS.Workbook();
   const templatePath = path.resolve('./input/TICKER_TEMPLATE.xlsx');
 
   if (!fs.existsSync(templatePath)) {
@@ -339,8 +337,8 @@ const processExcelTemplate = async (
     return;
   }
 
-  // Read the Excel file
-  const workbook = xlsx.readFile(templatePath);
+  // Read the template
+  await workbook.xlsx.readFile(templatePath);
 
   // Iterate over each ticker in the report
   for (const ticker in formattedReport) {
@@ -351,33 +349,45 @@ const processExcelTemplate = async (
       .sort((a, b) => new Date(b).getTime() - new Date(a).getTime())
       .slice(0, 4);
 
+    // Log the final results for each ticker
+    console.log(
+      `Final results for ${ticker}:`,
+      JSON.stringify(reportData, null, 2),
+    );
+
     // Get the template worksheet
-    const templateSheetName = '<TICKER> Results';
-    const worksheet = workbook.Sheets[templateSheetName];
-    if (!worksheet) {
-      console.error(`Template sheet "${templateSheetName}" not found.`);
+    const templateSheet = workbook.getWorksheet('<TICKER> Results');
+    if (!templateSheet) {
+      console.error('Template sheet "<TICKER> Results" not found.');
       return;
     }
 
     // Duplicate and rename the sheet
-    const newSheetName = `${ticker} Results`;
-    const jsonSheet = xlsx.utils.sheet_to_json(worksheet, {
-      header: 1,
-      raw: true,
+    const newSheet = workbook.addWorksheet(`${ticker} Results`, {
+      properties: { tabColor: { argb: 'FF00FF00' } }, // Adjust if needed
     });
-    const aoaSheet = jsonSheet.map((row: any) => Object.values(row));
-    const newSheet = xlsx.utils.aoa_to_sheet(aoaSheet);
+
+    templateSheet.eachRow((row, rowIndex) => {
+      const newRow = newSheet.getRow(rowIndex);
+      newRow.values = row.values;
+
+      // Copy styles
+      row.eachCell({ includeEmpty: true }, (cell, colNumber) => {
+        const newCell = newRow.getCell(colNumber);
+        newCell.style = cell.style; // Copy styles
+        if (cell.formula) {
+          newCell.value = { formula: cell.formula, result: cell.result }; // Copy formulas
+        }
+      });
+    });
 
     // Apply data to the new sheet
     applyMappingsToSheet(newSheet, reportData, years);
-
-    // Add the new sheet to the workbook
-    xlsx.utils.book_append_sheet(workbook, newSheet, newSheetName);
   }
 
   // Save the updated workbook to the output directory
   const outputPath = path.resolve(`./output/TICKER_RESULTS.xlsx`);
-  xlsx.writeFile(workbook, outputPath);
+  await workbook.xlsx.writeFile(outputPath);
   console.log(`Excel file saved to ${outputPath}`);
 };
 
