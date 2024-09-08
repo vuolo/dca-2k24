@@ -17,7 +17,7 @@ const config = {
   fetchCashFlow: true,
 };
 
-const tickers = ['NVDA'];
+const tickers = ['NVDA', 'TSLA', 'AAPL', 'GOOGL', 'AMZN'];
 
 const incomeStatementURL =
   'https://finance.yahoo.com/quote/<TICKER>/financials/';
@@ -100,12 +100,8 @@ interface FinalReport {
   cashFlow: Report;
 }
 
-// Object to hold the final structured result
-const finalReport: FinalReport = {
-  balanceSheet: {},
-  incomeStatement: {},
-  cashFlow: {},
-};
+// Modify finalReport to hold results for each ticker
+const finalReport: Record<string, FinalReport> = {};
 
 // Promisified runCurlCommand
 const runCurlCommand = (
@@ -160,6 +156,43 @@ const runCurlCommand = (
   });
 };
 
+/**
+ * Function to format the final report by reordering the date keys
+ * in reverse chronological order and limiting to the most recent 4 years.
+ */
+const formatFinalReport = (
+  finalReport: Record<string, FinalReport>,
+): Record<string, FinalReport> => {
+  // Helper function to sort keys by date and limit to 4
+  const reorderAndLimitDates = (data: Report): Report => {
+    const sortedKeys = Object.keys(data)
+      .sort((a, b) => new Date(b).getTime() - new Date(a).getTime()) // Sort by date, most recent first
+      .slice(0, 4); // Only take the most recent 4 keys
+
+    const newData: Report = {};
+    for (const key of sortedKeys) {
+      newData[key] = data[key];
+    }
+    return newData;
+  };
+
+  // Create a new final report with reordered and limited dates
+  const formattedReport: Record<string, FinalReport> = {};
+
+  // Iterate through each ticker in the finalReport
+  for (const ticker in finalReport) {
+    formattedReport[ticker] = {
+      balanceSheet: reorderAndLimitDates(finalReport[ticker].balanceSheet),
+      incomeStatement: reorderAndLimitDates(
+        finalReport[ticker].incomeStatement,
+      ),
+      cashFlow: reorderAndLimitDates(finalReport[ticker].cashFlow),
+    };
+  }
+
+  return formattedReport;
+};
+
 // Handler function for parsed data
 const handleParsedData = (
   data: ResponseBody,
@@ -175,6 +208,15 @@ const handleParsedData = (
     return;
   }
 
+  // Initialize the ticker key if not already initialized
+  if (!finalReport[ticker]) {
+    finalReport[ticker] = {
+      balanceSheet: {},
+      incomeStatement: {},
+      cashFlow: {},
+    };
+  }
+
   Object.keys(mappings).forEach((field) => {
     const key = mappings[field as keyof typeof mappings];
     data?.timeseries?.result?.forEach((result) => {
@@ -186,14 +228,14 @@ const handleParsedData = (
             const reportedValue = entry?.reportedValue?.raw;
 
             if (asOfDate && reportedValue !== undefined) {
-              // Store the data in the finalReport object
-              if (!finalReport[reportType]) {
-                finalReport[reportType] = {};
+              // Store the data in the finalReport object under the appropriate ticker
+              if (!finalReport[ticker][reportType]) {
+                finalReport[ticker][reportType] = {};
               }
-              if (!finalReport[reportType][asOfDate]) {
-                finalReport[reportType][asOfDate] = {};
+              if (!finalReport[ticker][reportType][asOfDate]) {
+                finalReport[ticker][reportType][asOfDate] = {};
               }
-              finalReport[reportType][asOfDate][field] = reportedValue;
+              finalReport[ticker][reportType][asOfDate][field] = reportedValue;
             }
           }
         });
@@ -202,35 +244,7 @@ const handleParsedData = (
   });
 };
 
-/**
- * Function to format the final report by reordering the date keys
- * in reverse chronological order and limiting to the most recent 4 years.
- */
-const formatFinalReport = (finalReport: FinalReport): FinalReport => {
-  // Helper function to sort keys by date and limit to 4
-  const reorderAndLimitDates = (data: Report): Report => {
-    const sortedKeys = Object.keys(data)
-      .sort((a, b) => new Date(b).getTime() - new Date(a).getTime()) // Sort by date, most recent first
-      .slice(0, 4); // Only take the most recent 4 keys
-
-    const newData: Report = {};
-    for (const key of sortedKeys) {
-      newData[key] = data[key];
-    }
-    return newData;
-  };
-
-  // Create a new final report with reordered and limited dates
-  const formattedReport: FinalReport = {
-    balanceSheet: reorderAndLimitDates(finalReport.balanceSheet),
-    incomeStatement: reorderAndLimitDates(finalReport.incomeStatement),
-    cashFlow: reorderAndLimitDates(finalReport.cashFlow),
-  };
-
-  return formattedReport;
-};
-
-// At the end of the main function, call the formatter and log the result
+// Main function that runs the tasks
 const main = async () => {
   const promises: Promise<void>[] = [];
 
